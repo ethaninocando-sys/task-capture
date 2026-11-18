@@ -53,31 +53,47 @@ New accounts start with Personal, Work, Health, Family and Finance (set in `supa
 
 A tiny menu-bar app in `mac/`. Press **⌥Space** anywhere and a floating add-task window pops up; Add or Cancel and you're back where you were. It shows the website's `/?popup=1` page, so form changes on the website show up there automatically.
 
-### Install it (no coding needed)
+### Install it
 
-1. Go to this project's **[Releases page](https://github.com/ethaninocando-sys/task-capture/releases/latest)** and download **Task-Capture-Mac.zip**.
-2. Double-click the zip, then drag **Task Capture** into your **Applications** folder.
-3. Open it. The first time, macOS says it can't verify the app (it isn't from the App Store). Click **Done**, then go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to Task Capture, and confirm. You only do this once.
-4. A ☑ icon appears in your menu bar. Press **⌥Space** and sign in with your Task Capture account (make one at [task-capture.vercel.app](https://task-capture.vercel.app) if you don't have one).
+Run these once in Terminal (no Node or website setup needed):
+
+1. Install Apple's free developer tools (skip if you already have them):
+
+   ```bash
+   xcode-select --install
+   ```
+
+2. Download the project:
+
+   ```bash
+   git clone https://github.com/ethaninocando-sys/task-capture.git
+   ```
+
+3. Build and install the Mac app:
+
+   ```bash
+   cd task-capture && bash mac/build.sh
+   ```
+
+4. Open it:
+
+   ```bash
+   open ~/Applications/"Task Capture.app"
+   ```
+
+A ☑ icon appears in your menu bar. Press **⌥Space** and sign in with your Task Capture account (make one at [task-capture.vercel.app](https://task-capture.vercel.app) if you don't have one).
 
 Works on Macs with Apple chips and Intel, macOS 13 or newer. If ⌥Space does nothing, another app (like Raycast or Alfred) may already use that shortcut.
 
-### Share a new version (for the owner)
+### Update it
+
+The popup shows the live website, so website changes reach you automatically. Only rebuild when the Mac app itself changes:
 
 ```bash
-bash mac/package.sh
+cd task-capture && git pull && bash mac/build.sh
 ```
 
-This makes `mac/build/Task-Capture-Mac.zip`. On GitHub, open **Releases → Draft a new release**, create a tag like `mac-v1.1` (match the version in `mac/Info.plist`), attach the zip, and click **Publish release**.
-
-### Build it yourself
-
-Build and install it (needs Apple's free Command Line Tools):
-
-```bash
-bash mac/build.sh
-open ~/Applications/"Task Capture.app"
-```
+### Good to know
 
 - It turns on **Start at login** the first time it runs (toggle it from the menu bar icon).
 - `taskcapture://add` also opens the popup (useful for Shortcuts or a Stream Deck button).
