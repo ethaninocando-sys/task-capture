@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // menu bar only, no Dock icon
+        buildEditMenu()
         buildPanel()
         buildMenuBarIcon()
         registerHotKey()
@@ -47,6 +48,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         for url in urls where url.scheme == "taskcapture" {
             if url.host == "close" { hidePopup() } else { showPopup() }
         }
+    }
+
+    // MARK: Edit menu
+
+    /// Mac apps only get ⌘V / ⌘C / ⌘X / ⌘A / ⌘Z through an Edit menu. This app has no visible
+    /// menu bar, but the menu still has to exist, or pasting (which Wispr Flow uses) does nothing.
+    private func buildEditMenu() {
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        let main = NSMenu()
+        main.addItem(NSMenuItem(title: "Task Capture", action: nil, keyEquivalent: "")) // first slot is the app menu
+        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        editItem.submenu = edit
+        main.addItem(editItem)
+        NSApp.mainMenu = main
     }
 
     // MARK: Floating window
