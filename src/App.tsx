@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Login } from './components/Login'
+import { PopupCapture } from './components/PopupCapture'
 import { SetNewPassword } from './components/SetNewPassword'
 import { TaskBoard } from './components/TaskBoard'
+import { isPopup } from './lib/native'
 import { isConfigured, openedFromResetLink, supabase } from './lib/supabase'
 
 export default function App() {
@@ -37,5 +39,6 @@ export default function App() {
 
   if (!ready) return null
   if (session && resettingPassword) return <SetNewPassword onDone={() => setResettingPassword(false)} />
-  return session ? <TaskBoard /> : <Login />
+  if (!session) return <Login />
+  return isPopup ? <PopupCapture /> : <TaskBoard />
 }

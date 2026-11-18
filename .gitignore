@@ -30,3 +30,6 @@ dist-ssr
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# Mac app build output
+mac/build/
