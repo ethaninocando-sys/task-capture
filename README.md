@@ -53,6 +53,25 @@ New accounts start with Personal, Work, Health, Family and Finance (set in `supa
 
 A tiny menu-bar app in `mac/`. Press **⌥Space** anywhere and a floating add-task window pops up; Add or Cancel and you're back where you were. It shows the website's `/?popup=1` page, so form changes on the website show up there automatically.
 
+### Install it (no coding needed)
+
+1. Go to this project's **[Releases page](https://github.com/ethaninocando-sys/task-capture/releases/latest)** and download **Task-Capture-Mac.zip**.
+2. Double-click the zip, then drag **Task Capture** into your **Applications** folder.
+3. Open it. The first time, macOS says it can't verify the app (it isn't from the App Store). Click **Done**, then go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to Task Capture, and confirm. You only do this once.
+4. A ☑ icon appears in your menu bar. Press **⌥Space** and sign in with your Task Capture account (make one at [task-capture.vercel.app](https://task-capture.vercel.app) if you don't have one).
+
+Works on Macs with Apple chips and Intel, macOS 13 or newer. If ⌥Space does nothing, another app (like Raycast or Alfred) may already use that shortcut.
+
+### Share a new version (for the owner)
+
+```bash
+bash mac/package.sh
+```
+
+This makes `mac/build/Task-Capture-Mac.zip`. On GitHub, open **Releases → Draft a new release**, create a tag like `mac-v1.1` (match the version in `mac/Info.plist`), attach the zip, and click **Publish release**.
+
+### Build it yourself
+
 Build and install it (needs Apple's free Command Line Tools):
 
 ```bash
