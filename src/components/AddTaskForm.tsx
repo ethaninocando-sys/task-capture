@@ -2,25 +2,29 @@ import { useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { daysFromToday } from '../lib/dates'
 import { KINDS, PRIORITIES } from '../lib/options'
-import type { Area, Kind, Priority } from '../lib/options'
+import type { Area, Kind, Priority, Task } from '../lib/options'
 import { supabase } from '../lib/supabase'
 import { ChipGroup } from './ChipGroup'
 
 interface Props {
   areas: Area[]
+  /** When given, the form starts filled in with this task and saves changes to it. */
+  task?: Task
+  /** Called after the task is added (or saved, when editing). */
   onAdded: () => void
   onCancel: () => void
   onEditAreas: () => void
 }
 
-export function AddTaskForm({ areas, onAdded, onCancel, onEditAreas }: Props) {
-  const [title, setTitle] = useState('')
-  const [priority, setPriority] = useState<Priority | null>(null)
-  const [pickedArea, setArea] = useState<string | null>(null)
+export function AddTaskForm({ areas, task, onAdded, onCancel, onEditAreas }: Props) {
+  const editing = Boolean(task)
+  const [title, setTitle] = useState(task?.title ?? '')
+  const [priority, setPriority] = useState<Priority | null>(task?.priority ?? null)
+  const [pickedArea, setArea] = useState<string | null>(task?.area_id ?? null)
   // If the picked area gets deleted in the Edit areas screen, un-pick it.
   const area = pickedArea && areas.some((a) => a.id === pickedArea) ? pickedArea : null
-  const [kind, setKind] = useState<Kind | null>(null)
-  const [deadline, setDeadline] = useState('')
+  const [kind, setKind] = useState<Kind | null>(task?.kind ?? null)
+  const [deadline, setDeadline] = useState(task?.deadline ?? '')
   const [tried, setTried] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,13 +43,16 @@ export function AddTaskForm({ areas, onAdded, onCancel, onEditAreas }: Props) {
     if (!isValid || saving) return
     setSaving(true)
     setError(null)
-    const { error } = await supabase.from('tasks').insert({
+    const fields = {
       title: title.trim(),
       priority,
       area_id: area,
       kind,
       deadline: deadline || null,
-    })
+    }
+    const { error } = task
+      ? await supabase.from('tasks').update(fields).eq('id', task.id)
+      : await supabase.from('tasks').insert(fields)
     setSaving(false)
     if (error) {
       setError(`Couldn't save: ${error.message}`)
@@ -81,7 +88,7 @@ export function AddTaskForm({ areas, onAdded, onCancel, onEditAreas }: Props) {
         <textarea
           id="task-title"
           autoFocus
-          rows={3}
+          rows={editing ? 8 : 3}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
@@ -155,7 +162,7 @@ export function AddTaskForm({ areas, onAdded, onCancel, onEditAreas }: Props) {
 
       <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
         <p className="hidden text-xs text-muted sm:block">
-          Enter to add · Shift+Enter new line · Esc to cancel
+          Enter to {editing ? 'save' : 'add'} · Shift+Enter new line · Esc to cancel
         </p>
         <div className="ml-auto flex gap-2">
           <button
@@ -170,7 +177,7 @@ export function AddTaskForm({ areas, onAdded, onCancel, onEditAreas }: Props) {
             disabled={saving}
             className="min-h-10 rounded-lg bg-accent px-4 text-sm font-medium text-accent-text disabled:opacity-60"
           >
-            {saving ? 'Adding…' : 'Add task'}
+            {editing ? (saving ? 'Saving…' : 'Save') : saving ? 'Adding…' : 'Add task'}
           </button>
         </div>
       </div>

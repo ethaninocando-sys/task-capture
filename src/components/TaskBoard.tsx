@@ -19,6 +19,7 @@ export function TaskBoard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(() => new URLSearchParams(location.search).has('add'))
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [areaFilter, setAreaFilter] = useState(ALL)
   const [kindFilter, setKindFilter] = useState(ALL)
   const [showDone, setShowDone] = useState(false)
@@ -107,6 +108,7 @@ export function TaskBoard() {
 
   function closeAdd() {
     setAdding(false)
+    setEditingTask(null)
     if (location.search) history.replaceState(null, '', location.pathname)
   }
 
@@ -228,7 +230,7 @@ export function TaskBoard() {
             </h2>
             <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
               {g.tasks.map((t) => (
-                <TaskRow key={t.id} task={t} areaName={nameOf(t)} onToggle={toggle} onDelete={remove} />
+                <TaskRow key={t.id} task={t} areaName={nameOf(t)} onToggle={toggle} onEdit={setEditingTask} onDelete={remove} />
               ))}
             </ul>
           </section>
@@ -250,7 +252,7 @@ export function TaskBoard() {
             {showDone && (
               <ul className="mt-2 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
                 {done.map((t) => (
-                  <TaskRow key={t.id} task={t} areaName={nameOf(t)} onToggle={toggle} onDelete={remove} />
+                  <TaskRow key={t.id} task={t} areaName={nameOf(t)} onToggle={toggle} onEdit={setEditingTask} onDelete={remove} />
                 ))}
               </ul>
             )}
@@ -270,7 +272,7 @@ export function TaskBoard() {
         </svg>
       </button>
 
-      {adding && (
+      {(adding || editingTask) && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-6"
           onMouseDown={(e) => e.target === e.currentTarget && closeAdd()}
@@ -278,16 +280,19 @@ export function TaskBoard() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Add a task"
+            aria-label={editingTask ? 'Edit task' : 'Add a task'}
             className="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-line bg-bg p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-w-xl sm:rounded-2xl"
           >
+            {editingTask && <h2 className="mb-4 text-lg font-semibold">Edit task</h2>}
             <AddTaskForm
+              key={editingTask?.id ?? 'new'}
               areas={areas}
+              task={editingTask ?? undefined}
               onEditAreas={() => setEditingAreas(true)}
               onCancel={closeAdd}
               onAdded={() => {
                 closeAdd()
-                setToast('Task added')
+                setToast(editingTask ? 'Task saved' : 'Task added')
                 void load()
               }}
             />

@@ -7,6 +7,7 @@ interface Props {
   /** The task's area name, or null when it has none. */
   areaName: string | null
   onToggle: (task: Task) => void
+  onEdit: (task: Task) => void
   onDelete: (task: Task) => void
 }
 
@@ -17,7 +18,7 @@ const toneClass = {
   later: 'text-muted',
 } as const
 
-export function TaskRow({ task, areaName, onToggle, onDelete }: Props) {
+export function TaskRow({ task, areaName, onToggle, onEdit, onDelete }: Props) {
   const due = task.deadline ? describeDeadline(task.deadline) : null
 
   return (
@@ -39,11 +40,17 @@ export function TaskRow({ task, areaName, onToggle, onDelete }: Props) {
         )}
       </button>
 
-      <div className="min-w-0 flex-1">
-        <p className={`text-[15px] leading-snug break-words whitespace-pre-wrap ${task.done ? 'text-muted line-through' : ''}`}>
+      {/* Click the task to edit it. */}
+      <button
+        type="button"
+        onClick={() => onEdit(task)}
+        title="Edit task"
+        className="-mx-1.5 -my-1 min-w-0 flex-1 cursor-pointer rounded-md px-1.5 py-1 text-left hover:bg-surface-2/60 focus-visible:outline-2 focus-visible:outline-accent"
+      >
+        <span className={`block text-[15px] leading-snug break-words whitespace-pre-wrap ${task.done ? 'text-muted line-through' : ''}`}>
           {task.title}
-        </p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
+        </span>
+        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
           <span className={areaName ? '' : 'italic'}>{areaName ?? 'No area'}</span>
           <span aria-hidden>·</span>
           <span>{labelFor(KINDS, task.kind)}</span>
@@ -53,8 +60,8 @@ export function TaskRow({ task, areaName, onToggle, onDelete }: Props) {
               <span className={toneClass[due.tone]}>{due.label}</span>
             </>
           )}
-        </div>
-      </div>
+        </span>
+      </button>
 
       <button
         type="button"
