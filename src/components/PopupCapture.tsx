@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { inMacApp, tellMac } from '../lib/native'
 import type { Area } from '../lib/options'
 import { supabase } from '../lib/supabase'
@@ -8,7 +8,10 @@ import { Modal } from './Modal'
 
 declare global {
   interface Window {
-    /** Called by the Mac app every time the popup opens, so you start with an empty form. */
+    /**
+     * Called by the Mac app every time the popup opens. Puts the cursor back in the text box and
+     * keeps whatever you left unsent. The form only starts blank after Add task or Cancel/Esc.
+     */
     taskCaptureReset?: () => void
   }
 }
@@ -20,6 +23,7 @@ export function PopupCapture() {
   const [formKey, setFormKey] = useState(0)
   const [editingAreas, setEditingAreas] = useState(false)
   const [added, setAdded] = useState(false)
+  const addedRef = useRef(false) // true right after Add task, so the next open starts blank
 
   const loadAreas = useCallback(async () => {
     const [areaRows, taskRows] = await Promise.all([
@@ -39,26 +43,40 @@ export function PopupCapture() {
     if (inMacApp) tellMac({ type: 'close' })
   }, [])
 
+  // Cancel / Esc: throw the draft away, then hide.
+  const discard = useCallback(() => {
+    setFormKey((k) => k + 1)
+    close()
+  }, [close])
+
   useEffect(() => {
     void loadAreas()
-    // Fresh, empty form each time the Mac app shows the popup.
     window.taskCaptureReset = () => {
       setEditingAreas(false)
-      setAdded(false)
-      setFormKey((k) => k + 1)
+      // After a task was added, start fresh. Otherwise keep the unsent draft.
+      if (addedRef.current) {
+        addedRef.current = false
+        setAdded(false)
+        setFormKey((k) => k + 1)
+      }
       void loadAreas()
-      setTimeout(() => document.getElementById('task-title')?.focus(), 30)
+      setTimeout(() => {
+        const box = document.getElementById('task-title') as HTMLTextAreaElement | null
+        if (!box) return
+        box.focus()
+        box.setSelectionRange(box.value.length, box.value.length) // cursor at the end, ready to keep going
+      }, 30)
     }
     // Esc closes the popup, unless an inner pop-up (Edit areas) is open.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !document.querySelector('[role=dialog]')) close()
+      if (e.key === 'Escape' && !document.querySelector('[role=dialog]')) discard()
     }
     window.addEventListener('keydown', onKey)
     return () => {
       delete window.taskCaptureReset
       window.removeEventListener('keydown', onKey)
     }
-  }, [loadAreas, close])
+  }, [loadAreas, discard])
 
   return (
     <main className="min-h-dvh bg-bg p-5">
@@ -81,8 +99,9 @@ export function PopupCapture() {
           key={formKey}
           areas={areas}
           onEditAreas={() => setEditingAreas(true)}
-          onCancel={close}
+          onCancel={discard}
           onAdded={() => {
+            addedRef.current = true
             setAdded(true)
             // Show the check mark for a moment, then get out of the way.
             setTimeout(close, 450)
