@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Option } from '../lib/options'
 
 interface Props<T extends string> {
@@ -6,10 +7,12 @@ interface Props<T extends string> {
   value: T | null
   onChange: (value: T) => void
   error?: boolean
+  /** Optional small button shown at the end of the row (e.g. "Edit"). */
+  action?: ReactNode
 }
 
 /** A row of pill buttons where exactly one can be picked. */
-export function ChipGroup<T extends string>({ label, options, value, onChange, error }: Props<T>) {
+export function ChipGroup<T extends string>({ label, options, value, onChange, error, action }: Props<T>) {
   return (
     <fieldset>
       <legend className={`mb-2 text-xs font-medium tracking-wide uppercase ${error ? 'text-danger' : 'text-muted'}`}>
@@ -38,6 +41,7 @@ export function ChipGroup<T extends string>({ label, options, value, onChange, e
             </button>
           )
         })}
+        {action}
       </div>
     </fieldset>
   )

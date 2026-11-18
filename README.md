@@ -4,7 +4,7 @@ Quick-capture task app. Add a task in seconds, then see everything grouped by pr
 
 ## One-time setup
 
-1. **Database**: In Supabase, open **SQL Editor → New query**, paste everything from `supabase/schema.sql`, and click **Run**. Then do the same with `supabase/daily-checklist.sql` and `supabase/calendar-feed.sql`.
+1. **Database**: In Supabase, open **SQL Editor → New query**, paste everything from `supabase/schema.sql`, and click **Run**. Then do the same, in order, with `supabase/daily-checklist.sql`, `supabase/calendar-feed.sql` and `supabase/areas.sql`.
 2. **Sign-ups**: In Supabase, go to **Authentication → Sign In / Providers → Email**.
    - Leave **Allow new users to sign up** ON (so partners can make accounts).
    - Turn **Confirm email** OFF (Supabase's free email only sends ~2 per hour, so confirmations would get stuck).
@@ -44,6 +44,7 @@ npx supabase functions deploy calendar --remote=fkcwonyczeheiuwzqitb --no-verify
 
 `--no-verify-jwt` is needed because calendar apps can't log in; the secret token in each person's link is what protects it.
 
-## Change the areas
+## Areas
 
-Edit the `AREAS` list in `src/lib/options.ts`. Also update `AREA_LABELS` in `supabase/functions/calendar/index.ts` (then upload it again, see above).
+Each person has their own areas. Edit them in the app: the **Edit** button next to the Area filter, or in the add-task form.
+New accounts start with Personal, Work, Health, Family and Finance (set in `supabase/areas.sql`).

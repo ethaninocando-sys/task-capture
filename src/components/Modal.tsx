@@ -1,10 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 
 /** A pop-up panel: slides up from the bottom on phones, centered on bigger screens. Esc closes it. */
 export function Modal({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      // When pop-ups are stacked, Esc only closes the one on top.
+      const dialogs = document.querySelectorAll('[role=dialog]')
+      if (dialogs[dialogs.length - 1] === dialogRef.current) onClose()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
@@ -15,6 +22,7 @@ export function Modal({ label, onClose, children }: { label: string; onClose: ()
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={label}

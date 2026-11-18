@@ -1,9 +1,11 @@
 import { describeDeadline } from '../lib/dates'
-import { AREAS, KINDS, labelFor } from '../lib/options'
+import { KINDS, labelFor } from '../lib/options'
 import type { Task } from '../lib/options'
 
 interface Props {
   task: Task
+  /** The task's area name, or null when it has none. */
+  areaName: string | null
   onToggle: (task: Task) => void
   onDelete: (task: Task) => void
 }
@@ -15,7 +17,7 @@ const toneClass = {
   later: 'text-muted',
 } as const
 
-export function TaskRow({ task, onToggle, onDelete }: Props) {
+export function TaskRow({ task, areaName, onToggle, onDelete }: Props) {
   const due = task.deadline ? describeDeadline(task.deadline) : null
 
   return (
@@ -42,7 +44,7 @@ export function TaskRow({ task, onToggle, onDelete }: Props) {
           {task.title}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
-          <span>{labelFor(AREAS, task.area)}</span>
+          <span className={areaName ? '' : 'italic'}>{areaName ?? 'No area'}</span>
           <span aria-hidden>·</span>
           <span>{labelFor(KINDS, task.kind)}</span>
           {due && !task.done && (
