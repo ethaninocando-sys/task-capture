@@ -48,3 +48,19 @@ npx supabase functions deploy calendar --remote=fkcwonyczeheiuwzqitb --no-verify
 
 Each person has their own areas. Edit them in the app: the **Edit** button next to the Area filter, or in the add-task form.
 New accounts start with Personal, Work, Health, Family and Finance (set in `supabase/areas.sql`).
+
+## Mac quick-add popup (⌥Space)
+
+A tiny menu-bar app in `mac/`. Press **⌥Space** anywhere and a floating add-task window pops up; Add or Cancel and you're back where you were. It shows the website's `/?popup=1` page, so form changes on the website show up there automatically.
+
+Build and install it (needs Apple's free Command Line Tools):
+
+```bash
+bash mac/build.sh
+open ~/Applications/"Task Capture.app"
+```
+
+- It turns on **Start at login** the first time it runs (toggle it from the menu bar icon).
+- `taskcapture://add` also opens the popup (useful for Shortcuts or a Stream Deck button).
+- To test against your local copy instead of the live site:
+  `defaults write app.taskcapture.mac url "http://localhost:5173/?popup=1"` (undo with `defaults delete app.taskcapture.mac url`).
