@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { daysFromToday } from '../lib/dates'
-import { AREAS, KINDS, PRIORITIES } from '../lib/options'
-import type { Kind, Priority } from '../lib/options'
+import { KINDS, PRIORITIES } from '../lib/options'
+import type { Area, Kind, Priority } from '../lib/options'
 import { supabase } from '../lib/supabase'
 import { ChipGroup } from './ChipGroup'
 
 interface Props {
+  areas: Area[]
   onAdded: () => void
   onCancel: () => void
+  onEditAreas: () => void
 }
 
-export function AddTaskForm({ onAdded, onCancel }: Props) {
+export function AddTaskForm({ areas, onAdded, onCancel, onEditAreas }: Props) {
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<Priority | null>(null)
-  const [area, setArea] = useState<string | null>(null)
+  const [pickedArea, setArea] = useState<string | null>(null)
+  // If the picked area gets deleted in the Edit areas screen, un-pick it.
+  const area = pickedArea && areas.some((a) => a.id === pickedArea) ? pickedArea : null
   const [kind, setKind] = useState<Kind | null>(null)
   const [deadline, setDeadline] = useState('')
   const [tried, setTried] = useState(false)
@@ -38,7 +42,7 @@ export function AddTaskForm({ onAdded, onCancel }: Props) {
     const { error } = await supabase.from('tasks').insert({
       title: title.trim(),
       priority,
-      area,
+      area_id: area,
       kind,
       deadline: deadline || null,
     })
@@ -95,7 +99,22 @@ export function AddTaskForm({ onAdded, onCancel }: Props) {
       </div>
 
       <ChipGroup label="Priority" options={PRIORITIES} value={priority} onChange={setPriority} error={tried && missing.priority} />
-      <ChipGroup label="Area" options={AREAS} value={area} onChange={setArea} error={tried && missing.area} />
+      <ChipGroup
+        label="Area"
+        options={areas.map((a) => ({ value: a.id, label: a.name }))}
+        value={area}
+        onChange={setArea}
+        error={tried && missing.area}
+        action={
+          <button
+            type="button"
+            onClick={onEditAreas}
+            className="inline-flex min-h-9 items-center rounded-full border border-dashed border-line px-3 text-sm text-muted hover:bg-surface-2 hover:text-text"
+          >
+            {areas.length === 0 ? '+ Add an area' : 'Edit'}
+          </button>
+        }
+      />
       <ChipGroup label="Kind" options={KINDS} value={kind} onChange={setKind} error={tried && missing.kind} />
 
       <fieldset>

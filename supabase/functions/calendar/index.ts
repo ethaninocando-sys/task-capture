@@ -20,25 +20,15 @@ const KIND_LABELS: Record<string, string> = {
   deep: 'Deep work',
 }
 
-// Keep in sync with AREAS in src/lib/options.ts. Unknown areas get turned into Title Case.
-const AREA_LABELS: Record<string, string> = {
-  family: 'Family',
-  relationship: 'Relationship',
-  health: 'Health',
-  events: 'Events',
-  'war-room': 'War Room',
-  'real-world': 'Real World',
-  'ei-conversion': 'EI-Conversion',
-  finance: 'Finance',
-  systems: 'Systems',
-}
-
-const prettyArea = (area: string) =>
-  AREA_LABELS[area] ??
-  area
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
+/** Each person's area names come from the areas table; very old tasks may only have the text value. */
+const prettyArea = (task: { area: string | null; areas: { name: string } | null }) =>
+  task.areas?.name ??
+  (task.area
+    ? task.area
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ')
+    : 'No area')
 
 function secretKey(): string {
   const keys = Deno.env.get('SUPABASE_SECRET_KEYS')
@@ -96,7 +86,8 @@ interface TaskRow {
   id: string
   title: string
   priority: string
-  area: string
+  area: string | null
+  areas: { name: string } | null
   kind: string
   deadline: string
   created_at: string
@@ -117,7 +108,7 @@ function buildCalendar(tasks: TaskRow[]): string {
   ]
 
   for (const t of tasks) {
-    const details = [PRIORITY_LABELS[t.priority] ?? t.priority, prettyArea(t.area), KIND_LABELS[t.kind] ?? t.kind]
+    const details = [PRIORITY_LABELS[t.priority] ?? t.priority, prettyArea(t), KIND_LABELS[t.kind] ?? t.kind]
     lines.push(
       'BEGIN:VEVENT',
       `UID:${t.id}@task-capture`,
@@ -127,7 +118,7 @@ function buildCalendar(tasks: TaskRow[]): string {
       `DTEND;VALUE=DATE:${compactDate(nextDay(t.deadline))}`,
       `SUMMARY:${escapeText(`${t.priority} · ${t.title}`)}`,
       `DESCRIPTION:${escapeText(details.join(' · '))}`,
-      `CATEGORIES:${escapeText(prettyArea(t.area))}`,
+      `CATEGORIES:${escapeText(prettyArea(t))}`,
       'TRANSP:TRANSPARENT',
       'END:VEVENT',
     )
@@ -161,7 +152,7 @@ Deno.serve(async (req) => {
 
   const { data: tasks, error: tasksError } = await supabase
     .from('tasks')
-    .select('id, title, priority, area, kind, deadline, created_at')
+    .select('id, title, priority, area, kind, deadline, created_at, areas(name)')
     .eq('user_id', feed.user_id)
     .eq('done', false)
     .not('deadline', 'is', null)
@@ -173,7 +164,7 @@ Deno.serve(async (req) => {
     return new Response('Something went wrong', { status: 500 })
   }
 
-  return new Response(buildCalendar(tasks as TaskRow[]), {
+  return new Response(buildCalendar(tasks as unknown as TaskRow[]), {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'inline; filename="task-capture.ics"',

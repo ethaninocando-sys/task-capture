@@ -1,5 +1,4 @@
-// All the choices in the add-task form live here.
-// To add or rename an area, edit the AREAS list. No database change needed.
+// Fixed choices in the add-task form. Areas are per person and live in the database (see Area).
 
 export type Priority = 'A' | 'B' | 'C' | 'D' | 'W'
 export type Kind = 'quick' | 'message' | 'call' | 'deep'
@@ -17,17 +16,12 @@ export const PRIORITIES: (Option<Priority> & { hint: string; dot: string })[] = 
   { value: 'W', label: 'Waiting for', hint: 'W', dot: 'bg-sky-500' },
 ]
 
-export const AREAS: Option<string>[] = [
-  { value: 'family', label: 'Family' },
-  { value: 'relationship', label: 'Relationship' },
-  { value: 'health', label: 'Health' },
-  { value: 'events', label: 'Events' },
-  { value: 'war-room', label: 'War Room' },
-  { value: 'real-world', label: 'Real World' },
-  { value: 'ei-conversion', label: 'EI-Conversion' },
-  { value: 'finance', label: 'Finance' },
-  { value: 'systems', label: 'Systems' },
-]
+/** One of your areas (each person has their own list, stored in the database). */
+export interface Area {
+  id: string
+  name: string
+  position: number
+}
 
 export const KINDS: Option<Kind>[] = [
   { value: 'quick', label: 'Quick' },
@@ -40,7 +34,9 @@ export interface Task {
   id: string
   title: string
   priority: Priority
-  area: string
+  /** Old text value, kept only for older app versions. Use area_id. */
+  area: string | null
+  area_id: string | null
   kind: Kind
   deadline: string | null
   done: boolean

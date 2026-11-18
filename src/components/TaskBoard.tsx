@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AREAS, KINDS, PRIORITIES } from '../lib/options'
-import type { Task } from '../lib/options'
+import { KINDS, PRIORITIES } from '../lib/options'
+import type { Area, Task } from '../lib/options'
 import { supabase } from '../lib/supabase'
 import { AddTaskForm } from './AddTaskForm'
+import { AreaEditor } from './AreaEditor'
 import { CalendarLink } from './CalendarLink'
 import { DailyChecklist } from './DailyChecklist'
 import { Modal } from './Modal'
 import { TaskRow } from './TaskRow'
 
 const ALL = 'all'
+const NO_AREA = 'none'
 
 export function TaskBoard() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [areas, setAreas] = useState<Area[]>([])
+  const [editingAreas, setEditingAreas] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(() => new URLSearchParams(location.search).has('add'))
@@ -22,7 +26,7 @@ export function TaskBoard() {
   const [showCalendar, setShowCalendar] = useState(false)
 
   const load = useCallback(async () => {
-    const [open, done] = await Promise.all([
+    const [open, done, areaRows] = await Promise.all([
       supabase
         .from('tasks')
         .select('*')
@@ -30,12 +34,14 @@ export function TaskBoard() {
         .order('deadline', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true }),
       supabase.from('tasks').select('*').eq('done', true).order('done_at', { ascending: false }).limit(50),
+      supabase.from('areas').select('id, name, position').order('position').order('created_at'),
     ])
-    const err = open.error ?? done.error
+    const err = open.error ?? done.error ?? areaRows.error
     if (err) setError(`Couldn't load tasks: ${err.message}`)
     else {
       setError(null)
       setTasks([...(open.data as Task[]), ...(done.data as Task[])])
+      setAreas(areaRows.data as Area[])
     }
     setLoading(false)
   }, [])
@@ -46,6 +52,7 @@ export function TaskBoard() {
     const channel = supabase
       .channel('tasks-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'areas' }, () => void load())
       .subscribe()
     // Phones pause connections in the background, so refresh when you come back to the app.
     const onVisible = () => document.visibilityState === 'visible' && void load()
@@ -103,9 +110,26 @@ export function TaskBoard() {
     if (location.search) history.replaceState(null, '', location.pathname)
   }
 
+  const areaNames = useMemo(() => new Map(areas.map((a) => [a.id, a.name])), [areas])
+  const nameOf = (t: Task) => (t.area_id ? (areaNames.get(t.area_id) ?? null) : null)
+  const taskCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const t of tasks) if (t.area_id) counts.set(t.area_id, (counts.get(t.area_id) ?? 0) + 1)
+    return counts
+  }, [tasks])
+  const hasNoAreaTasks = tasks.some((t) => !t.done && !(t.area_id && areaNames.has(t.area_id)))
+
+  // If the area you were filtering by gets deleted, go back to showing all.
+  const activeArea =
+    areaFilter === ALL || (areaFilter === NO_AREA && hasNoAreaTasks) || areaNames.has(areaFilter) ? areaFilter : ALL
+
   const matches = useCallback(
-    (t: Task) => (areaFilter === ALL || t.area === areaFilter) && (kindFilter === ALL || t.kind === kindFilter),
-    [areaFilter, kindFilter],
+    (t: Task) => {
+      const hasArea = Boolean(t.area_id && areaNames.has(t.area_id))
+      const areaOk = activeArea === ALL || (activeArea === NO_AREA ? !hasArea : t.area_id === activeArea)
+      return areaOk && (kindFilter === ALL || t.kind === kindFilter)
+    },
+    [activeArea, kindFilter, areaNames],
   )
 
   const open = useMemo(() => tasks.filter((t) => !t.done && matches(t)), [tasks, matches])
@@ -119,7 +143,7 @@ export function TaskBoard() {
   const groups = PRIORITIES.map((p) => ({ ...p, tasks: open.filter((t) => t.priority === p.value) })).filter(
     (g) => g.tasks.length > 0,
   )
-  const filtered = areaFilter !== ALL || kindFilter !== ALL
+  const filtered = activeArea !== ALL || kindFilter !== ALL
 
   return (
     <div className="mx-auto min-h-dvh max-w-2xl px-4 pt-[max(1.5rem,env(safe-area-inset-top))] pb-28">
@@ -165,7 +189,16 @@ export function TaskBoard() {
         </span>
       </div>
       <div className="mb-5 flex flex-col gap-2">
-        <FilterRow label="Area" value={areaFilter} onChange={setAreaFilter} options={AREAS} />
+        <FilterRow
+          label="Area"
+          value={activeArea}
+          onChange={setAreaFilter}
+          options={[
+            ...areas.map((a) => ({ value: a.id, label: a.name })),
+            ...(hasNoAreaTasks ? [{ value: NO_AREA, label: 'No area' }] : []),
+          ]}
+          onEdit={() => setEditingAreas(true)}
+        />
         <FilterRow label="Kind" value={kindFilter} onChange={setKindFilter} options={KINDS} />
       </div>
 
@@ -195,7 +228,7 @@ export function TaskBoard() {
             </h2>
             <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
               {g.tasks.map((t) => (
-                <TaskRow key={t.id} task={t} onToggle={toggle} onDelete={remove} />
+                <TaskRow key={t.id} task={t} areaName={nameOf(t)} onToggle={toggle} onDelete={remove} />
               ))}
             </ul>
           </section>
@@ -217,7 +250,7 @@ export function TaskBoard() {
             {showDone && (
               <ul className="mt-2 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
                 {done.map((t) => (
-                  <TaskRow key={t.id} task={t} onToggle={toggle} onDelete={remove} />
+                  <TaskRow key={t.id} task={t} areaName={nameOf(t)} onToggle={toggle} onDelete={remove} />
                 ))}
               </ul>
             )}
@@ -249,6 +282,8 @@ export function TaskBoard() {
             className="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-line bg-bg p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-w-xl sm:rounded-2xl"
           >
             <AddTaskForm
+              areas={areas}
+              onEditAreas={() => setEditingAreas(true)}
               onCancel={closeAdd}
               onAdded={() => {
                 closeAdd()
@@ -258,6 +293,12 @@ export function TaskBoard() {
             />
           </div>
         </div>
+      )}
+
+      {editingAreas && (
+        <Modal label="Edit your areas" onClose={() => setEditingAreas(false)}>
+          <AreaEditor areas={areas} taskCounts={taskCounts} onChanged={load} onDone={() => setEditingAreas(false)} />
+        </Modal>
       )}
 
       {showCalendar && (
@@ -283,11 +324,13 @@ function FilterRow({
   value,
   onChange,
   options,
+  onEdit,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   options: { value: string; label: string }[]
+  onEdit?: () => void
 }) {
   const all = [{ value: ALL, label: 'All' }, ...options]
   return (
@@ -307,6 +350,15 @@ function FilterRow({
             {o.label}
           </button>
         ))}
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="min-h-8 shrink-0 rounded-full border border-dashed border-line px-3 text-xs whitespace-nowrap text-muted hover:bg-surface-2 hover:text-text"
+          >
+            Edit
+          </button>
+        )}
       </div>
     </div>
   )
