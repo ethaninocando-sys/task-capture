@@ -91,13 +91,7 @@ export function AddTaskForm({ areas, task, onAdded, onCancel, onEditAreas }: Pro
           rows={editing ? 8 : 3}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => {
-            // Plain Enter adds the task; Shift+Enter makes a new line.
-            if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-              e.preventDefault()
-              void submit()
-            }
-          }}
+          // Enter makes a new line here. ⌘Enter (handled on the form) adds the task.
           placeholder="What do you need to do?"
           className={`w-full resize-none rounded-xl border bg-surface px-4 py-3 text-lg leading-snug placeholder:text-muted focus:outline-2 focus:outline-offset-0 focus:outline-accent ${
             tried && missing.title ? 'border-danger' : 'border-line'
@@ -162,7 +156,7 @@ export function AddTaskForm({ areas, task, onAdded, onCancel, onEditAreas }: Pro
 
       <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
         <p className="hidden text-xs text-muted sm:block">
-          Enter to {editing ? 'save' : 'add'} · Shift+Enter new line · Esc to cancel
+          ⌘Enter to {editing ? 'save' : 'add'} · Enter new line · Esc to cancel
         </p>
         <div className="ml-auto flex gap-2">
           <button
