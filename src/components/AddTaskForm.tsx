@@ -25,6 +25,8 @@ export function AddTaskForm({ areas, task, onAdded, onCancel, onEditAreas }: Pro
   const area = pickedArea && areas.some((a) => a.id === pickedArea) ? pickedArea : null
   const [kind, setKind] = useState<Kind | null>(task?.kind ?? null)
   const [deadline, setDeadline] = useState(task?.deadline ?? '')
+  const [notes, setNotes] = useState(task?.notes ?? '')
+  const [showNotes, setShowNotes] = useState(Boolean(task?.notes))
   const [tried, setTried] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,6 +51,7 @@ export function AddTaskForm({ areas, task, onAdded, onCancel, onEditAreas }: Pro
       area_id: area,
       kind,
       deadline: deadline || null,
+      notes: notes.trim() || null,
     }
     const { error } = task
       ? await supabase.from('tasks').update(fields).eq('id', task.id)
@@ -97,6 +100,32 @@ export function AddTaskForm({ areas, task, onAdded, onCancel, onEditAreas }: Pro
             tried && missing.title ? 'border-danger' : 'border-line'
           }`}
         />
+        {showNotes ? (
+          <div className="mt-3">
+            <label htmlFor="task-notes" className="mb-2 block text-xs font-medium tracking-wide text-muted uppercase">
+              Notes <span className="normal-case tracking-normal">(optional)</span>
+            </label>
+            <textarea
+              id="task-notes"
+              rows={editing ? 6 : 3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Details, thoughts, links…"
+              className="w-full resize-y rounded-xl border border-line bg-surface px-4 py-3 text-[15px] leading-relaxed placeholder:text-muted focus:outline-2 focus:outline-offset-0 focus:outline-accent"
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setShowNotes(true)
+              setTimeout(() => document.getElementById('task-notes')?.focus(), 0)
+            }}
+            className="mt-2 min-h-8 rounded-md px-1 text-sm text-muted hover:text-text"
+          >
+            + Add notes
+          </button>
+        )}
       </div>
 
       <ChipGroup label="Priority" options={PRIORITIES} value={priority} onChange={setPriority} error={tried && missing.priority} />

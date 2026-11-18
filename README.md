@@ -4,7 +4,7 @@ Quick-capture task app. Add a task in seconds, then see everything grouped by pr
 
 ## One-time setup
 
-1. **Database**: In Supabase, open **SQL Editor → New query**, paste everything from `supabase/schema.sql`, and click **Run**. Then do the same, in order, with `supabase/daily-checklist.sql`, `supabase/calendar-feed.sql` and `supabase/areas.sql`.
+1. **Database**: In Supabase, open **SQL Editor → New query**, paste everything from `supabase/schema.sql`, and click **Run**. Then do the same, in order, with `supabase/daily-checklist.sql`, `supabase/calendar-feed.sql`, `supabase/areas.sql` and `supabase/notes.sql`.
 2. **Sign-ups**: In Supabase, go to **Authentication → Sign In / Providers → Email**.
    - Leave **Allow new users to sign up** ON (so partners can make accounts).
    - Turn **Confirm email** OFF (Supabase's free email only sends ~2 per hour, so confirmations would get stuck).
