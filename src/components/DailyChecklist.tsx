@@ -4,6 +4,7 @@ import { HISTORY_DAYS, isScheduledOn, streakFor } from '../lib/daily'
 import type { DailyCheck, DailyItem } from '../lib/daily'
 import { supabase } from '../lib/supabase'
 import { DailyEditor } from './DailyEditor'
+import { DailyNote, DailyNoteHistory } from './DailyNote'
 import { Modal } from './Modal'
 
 /** Today's date as "YYYY-MM-DD". Updates on its own after midnight. */
@@ -45,13 +46,22 @@ export function DailyChecklist() {
   const [error, setError] = useState<string | null>(null)
   const [notSetUp, setNotSetUp] = useState(false)
   const [editing, setEditing] = useState(false)
+  // Today's notes by item id, which notes are open, and whose past notes are showing.
+  const [notes, setNotes] = useState(new Map<string, string>())
+  const [openNotes, setOpenNotes] = useState(new Set<string>())
+  const [historyFor, setHistoryFor] = useState<DailyItem | null>(null)
   const todayISO = useTodayISO()
 
   const load = useCallback(async () => {
-    const [itemsRes, checksRes] = await Promise.all([
+    const [itemsRes, checksRes, notesRes] = await Promise.all([
       supabase.from('daily_items').select('*').order('position').order('created_at'),
       loadChecks(daysFromToday(-HISTORY_DAYS)),
+      supabase.from('daily_notes').select('item_id, note').eq('day', daysFromToday(0)),
     ])
+    // Notes are extra: if they fail to load, the checklist still works.
+    if (!notesRes.error) {
+      setNotes(new Map((notesRes.data as { item_id: string; note: string }[]).map((n) => [n.item_id, n.note])))
+    }
     const err = itemsRes.error ?? checksRes.error
     if (err) {
       const code = 'code' in err ? (err as { code?: string }).code : undefined
@@ -73,6 +83,7 @@ export function DailyChecklist() {
       .channel('daily-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_items' }, () => void load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_checks' }, () => void load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_notes' }, () => void load())
       .subscribe()
     const onVisible = () => document.visibilityState === 'visible' && void load()
     document.addEventListener('visibilitychange', onVisible)
@@ -119,6 +130,15 @@ export function DailyChecklist() {
         void load()
       }
     }
+  }
+
+  function toggleNote(itemId: string) {
+    setOpenNotes((open) => {
+      const next = new Set(open)
+      if (next.has(itemId)) next.delete(itemId)
+      else next.add(itemId)
+      return next
+    })
   }
 
   if (!loaded) return null
@@ -189,40 +209,87 @@ export function DailyChecklist() {
             {todays.map((item) => {
               const done = isDone(item)
               const streak = streakFor(item, checkedByItem.get(item.id) ?? new Set(), today)
+              const hasNote = Boolean(notes.get(item.id)?.trim())
+              const noteOpen = openNotes.has(item.id)
               return (
                 <li key={item.id}>
-                  <button
-                    type="button"
-                    role="checkbox"
-                    aria-checked={done}
-                    onClick={() => void toggle(item)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/50"
-                  >
-                    <span
-                      className={`flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
-                        done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted/60'
-                      }`}
-                      aria-hidden
+                  <div className="flex items-stretch">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={done}
+                      onClick={() => void toggle(item)}
+                      className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left hover:bg-surface-2/50"
                     >
-                      {done && (
-                        <svg viewBox="0 0 12 12" className="size-3">
-                          <path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </span>
-                    <span className={`min-w-0 flex-1 text-[15px] ${done ? 'text-muted line-through' : ''}`}>{item.title}</span>
-                    {streak >= 2 && (
-                      <span className="shrink-0 text-xs text-muted tabular-nums" title={`${streak} days in a row`}>
-                        🔥 {streak}
+                      <span
+                        className={`flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+                          done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted/60'
+                        }`}
+                        aria-hidden
+                      >
+                        {done && (
+                          <svg viewBox="0 0 12 12" className="size-3">
+                            <path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
                       </span>
-                    )}
-                  </button>
+                      <span className={`min-w-0 flex-1 text-[15px] ${done ? 'text-muted line-through' : ''}`}>{item.title}</span>
+                      {streak >= 2 && (
+                        <span className="shrink-0 text-xs text-muted tabular-nums" title={`${streak} days in a row`}>
+                          🔥 {streak}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleNote(item.id)}
+                      aria-expanded={noteOpen}
+                      aria-label={hasNote ? `Today's note for ${item.title}` : `Add a note for ${item.title}`}
+                      title={hasNote ? "Today's note" : 'Add a note'}
+                      className={`relative flex shrink-0 items-center px-4 hover:bg-surface-2/50 hover:text-text ${
+                        hasNote || noteOpen ? 'text-text' : 'text-muted/70'
+                      }`}
+                    >
+                      <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                        <path d="M3.5 2.5h6l3 3v8h-9z" strokeLinejoin="round" />
+                        <path d="M9.5 2.5v3h3M5.5 8.5h5M5.5 11h3.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      {hasNote && <span className="absolute top-1/2 right-3 size-1.5 -translate-y-3 rounded-full bg-accent" aria-hidden />}
+                    </button>
+                  </div>
+                  {noteOpen && (
+                    <DailyNote
+                      key={todayISO}
+                      itemId={item.id}
+                      itemTitle={item.title}
+                      day={todayISO}
+                      initial={notes.get(item.id) ?? ''}
+                      onSaved={(text) => setNotes((m) => new Map(m).set(item.id, text))}
+                      onShowHistory={() => setHistoryFor(item)}
+                    />
+                  )}
                 </li>
               )
             })}
           </ul>
           {allDone && <p className="border-t border-line px-4 py-2 text-xs text-emerald-600 dark:text-emerald-400">All done for today.</p>}
         </div>
+      )}
+
+      {historyFor && (
+        <Modal label={`Past notes: ${historyFor.title}`} onClose={() => setHistoryFor(null)}>
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold">Past notes: {historyFor.title}</h2>
+            <button
+              type="button"
+              onClick={() => setHistoryFor(null)}
+              className="min-h-9 rounded-lg px-3 text-sm text-muted hover:bg-surface-2 hover:text-text"
+            >
+              Close
+            </button>
+          </div>
+          <DailyNoteHistory itemId={historyFor.id} today={todayISO} />
+        </Modal>
       )}
 
       {editing && (

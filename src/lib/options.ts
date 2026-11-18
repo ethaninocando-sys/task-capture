@@ -39,6 +39,8 @@ export interface Task {
   area_id: string | null
   kind: Kind
   deadline: string | null
+  /** Optional extra details. Null when there's no note. */
+  notes: string | null
   done: boolean
   done_at: string | null
   created_at: string

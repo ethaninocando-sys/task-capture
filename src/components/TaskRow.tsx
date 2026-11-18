@@ -50,6 +50,13 @@ export function TaskRow({ task, areaName, onToggle, onEdit, onDelete }: Props) {
         <span className={`block text-[15px] leading-snug break-words whitespace-pre-wrap ${task.done ? 'text-muted line-through' : ''}`}>
           {task.title}
         </span>
+        {task.notes && (
+          <span className="mt-1 flex min-w-0 items-baseline gap-1.5 text-[13px] text-muted">
+            <span aria-hidden>📝</span>
+            <span className="sr-only">Note:</span>
+            <span className="truncate">{task.notes.trim().split('\n')[0]}</span>
+          </span>
+        )}
         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
           <span className={areaName ? '' : 'italic'}>{areaName ?? 'No area'}</span>
           <span aria-hidden>·</span>
